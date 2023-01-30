@@ -1,0 +1,16 @@
+.\objects\loadcode.o: ..\User\LoadCode\LoadCode.c
+.\objects\loadcode.o: ..\User\LoadCode\LoadCode.h
+.\objects\loadcode.o: ..\User\Button.h
+.\objects\loadcode.o: ..\Libraries\FWlib\inc\stm32f10x_gpio.h
+.\objects\loadcode.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\loadcode.o: ..\Libraries\CMSIS\core_cm3.h
+.\objects\loadcode.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\loadcode.o: ..\Libraries\CMSIS\system_stm32f10x.h
+.\objects\loadcode.o: ..\User\stm32f10x_conf.h
+.\objects\loadcode.o: ..\Libraries\FWlib\inc\stm32f10x_gpio.h
+.\objects\loadcode.o: ..\Libraries\FWlib\inc\stm32f10x_rcc.h
+.\objects\loadcode.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\loadcode.o: ..\Libraries\FWlib\inc\stm32f10x_usart.h
+.\objects\loadcode.o: ..\Libraries\FWlib\inc\misc.h
+.\objects\loadcode.o: ..\User\DacaiTFT\DCTFT.h
+.\objects\loadcode.o: ..\User\Delay\Delay.h

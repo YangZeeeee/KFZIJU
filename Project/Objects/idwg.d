@@ -1,0 +1,13 @@
+.\objects\idwg.o: ..\User\idwg.c
+.\objects\idwg.o: ..\Libraries\FWlib\inc\stm32f10x_iwdg.h
+.\objects\idwg.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\idwg.o: ..\Libraries\CMSIS\core_cm3.h
+.\objects\idwg.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\idwg.o: ..\Libraries\CMSIS\system_stm32f10x.h
+.\objects\idwg.o: ..\User\stm32f10x_conf.h
+.\objects\idwg.o: ..\Libraries\FWlib\inc\stm32f10x_gpio.h
+.\objects\idwg.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\idwg.o: ..\Libraries\FWlib\inc\stm32f10x_rcc.h
+.\objects\idwg.o: ..\Libraries\FWlib\inc\stm32f10x_usart.h
+.\objects\idwg.o: ..\Libraries\FWlib\inc\misc.h
+.\objects\idwg.o: ..\User\idwg.h

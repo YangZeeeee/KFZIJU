@@ -1,0 +1,16 @@
+.\objects\htusart.o: ..\User\htusat\htusart.c
+.\objects\htusart.o: ..\User\htusat\htusart.h
+.\objects\htusart.o: ..\Libraries\FWlib\inc\stm32f10x_usart.h
+.\objects\htusart.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\htusart.o: ..\Libraries\CMSIS\core_cm3.h
+.\objects\htusart.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\htusart.o: ..\Libraries\CMSIS\system_stm32f10x.h
+.\objects\htusart.o: ..\User\stm32f10x_conf.h
+.\objects\htusart.o: ..\Libraries\FWlib\inc\stm32f10x_gpio.h
+.\objects\htusart.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\htusart.o: ..\Libraries\FWlib\inc\stm32f10x_rcc.h
+.\objects\htusart.o: ..\Libraries\FWlib\inc\stm32f10x_usart.h
+.\objects\htusart.o: ..\Libraries\FWlib\inc\misc.h
+.\objects\htusart.o: ..\User\StepProcess.h
+.\objects\htusart.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\string.h
+.\objects\htusart.o: ..\User\DacaiTFT\DCTFT.h

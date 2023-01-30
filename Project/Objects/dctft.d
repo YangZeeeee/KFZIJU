@@ -1,0 +1,13 @@
+.\objects\dctft.o: ..\User\DacaiTFT\DCTFT.c
+.\objects\dctft.o: ..\User\DacaiTFT\DCTFT.h
+.\objects\dctft.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\dctft.o: ..\Libraries\CMSIS\core_cm3.h
+.\objects\dctft.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\dctft.o: ..\Libraries\CMSIS\system_stm32f10x.h
+.\objects\dctft.o: ..\User\stm32f10x_conf.h
+.\objects\dctft.o: ..\Libraries\FWlib\inc\stm32f10x_gpio.h
+.\objects\dctft.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\dctft.o: ..\Libraries\FWlib\inc\stm32f10x_rcc.h
+.\objects\dctft.o: ..\Libraries\FWlib\inc\stm32f10x_usart.h
+.\objects\dctft.o: ..\Libraries\FWlib\inc\misc.h
+.\objects\dctft.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\string.h

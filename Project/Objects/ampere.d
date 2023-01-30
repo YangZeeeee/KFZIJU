@@ -1,0 +1,15 @@
+.\objects\ampere.o: ..\User\Ampere.c
+.\objects\ampere.o: ..\User\Ampere.h
+.\objects\ampere.o: ..\Libraries\FWlib\inc\stm32f10x_usart.h
+.\objects\ampere.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\ampere.o: ..\Libraries\CMSIS\core_cm3.h
+.\objects\ampere.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\ampere.o: ..\Libraries\CMSIS\system_stm32f10x.h
+.\objects\ampere.o: ..\User\stm32f10x_conf.h
+.\objects\ampere.o: ..\Libraries\FWlib\inc\stm32f10x_gpio.h
+.\objects\ampere.o: ..\Libraries\CMSIS\stm32f10x.h
+.\objects\ampere.o: ..\Libraries\FWlib\inc\stm32f10x_rcc.h
+.\objects\ampere.o: ..\Libraries\FWlib\inc\stm32f10x_usart.h
+.\objects\ampere.o: ..\Libraries\FWlib\inc\misc.h
+.\objects\ampere.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\string.h
+.\objects\ampere.o: ..\User\DacaiTFT\DCTFT.h
