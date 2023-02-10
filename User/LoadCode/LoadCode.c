@@ -38,7 +38,7 @@ void LoadCode_Process(void)
 			{
 					DataSwitch_Relay_L;			//数据脚连接				
 					Test_Relay_H;						//5V断开
-					Load_Relay_L;						//
+					Load_Relay_L;						//烧录器连接
 					Data_EXTG_Relay_L;			//短接
 					LoadCodeP.LoadCodeStep = 3;	
 			}break;				
@@ -56,7 +56,6 @@ void LoadCode_Process(void)
 			case 2:
 			{
 					DataSwitch_Relay_H;			//数据脚连接
-					Test_Relay_H;						//5V断开
 					Load_Relay_H;						//
 					LoadCodeP.LoadCodeStep = 3;	
 					ButtonP.LoadCode_Timer  = 0;
@@ -64,7 +63,6 @@ void LoadCode_Process(void)
 			}break;
 		}
 	}
-
 }
 
 void HintDisplay_Send(void)

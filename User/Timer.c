@@ -77,14 +77,65 @@ void TIM2_IRQHandler(void)
 		if(htRxdata_P.WaitTimerFlag == 1) //感应头通信等待时长完成
 		{
 			htRxdata_P.WaitTimer++;
-			if(htRxdata_P.WaitTimer == 50) //50ms
+			if(TestStep.Test_Press == HW_Learn)
 			{
-				htRxdata_P.WaitTimerFlag = 2;
-				htRxdata_P.WaitTimer = 0;
+				if(htRxdata_P.WaitTimer == 7000) //等待5S 查看是否回数据
+				{
+					htRxdata_P.WaitTimerFlag = 2;
+					htRxdata_P.WaitTimer = 0;
+				}
+			}			
+			else if(TestStep.Test_Press == Starting_Up)  //上电等2S 发送自动学习指令
+			{
+				if(htRxdata_P.WaitTimer == 2000)
+				{
+					htRxdata_P.WaitTimerFlag = 2;
+					htRxdata_P.WaitTimer = 0;
+				}	
+			}
+			else if(TestStep.Test_Press == ReadData_Send)
+			{
+				if(htRxdata_P.WaitTimer == 15) //50ms
+				{
+						htRxdata_P.WaitTimerFlag = 2;
+						htRxdata_P.WaitTimer = 0;
+				}		
+			}
+			else if(TestStep.Test_Press == Ganying_Data)
+			{
+				if(htRxdata_P.WaitTimer == 4000) //5s
+				{
+						htRxdata_P.WaitTimerFlag = 2;
+						htRxdata_P.WaitTimer = 0;
+				}
+			}
+			else if(TestStep.Test_Press==Ganyin_Distance)
+			{
+				
+				if(htRxdata_P.WaitTimer == 1000) //1s
+				{
+						htRxdata_P.WaitTimerFlag = 2;
+						htRxdata_P.WaitTimer = 0;
+				}
+			}
+			else if(TestStep.Test_Press==Standby_Current)
+			{
+				if(htRxdata_P.WaitTimer == 1000) //1s
+				{
+						htRxdata_P.WaitTimerFlag = 2;
+						htRxdata_P.WaitTimer = 0;
+				}
+			}
+			else 
+			{
+					if(htRxdata_P.WaitTimer == 250) 
+					{
+						htRxdata_P.WaitTimerFlag = 2;
+						htRxdata_P.WaitTimer = 0;
+					}				
 			}
 		}
 		led_test_time++;
-		
 		if(AmpereData.FLAG == 1)  //电流表通信一包数据完成
 		{
 			AmpereData.TIME++;
@@ -130,7 +181,7 @@ void TIM2_IRQHandler(void)
 				Data_EXTG_Relay_H;		
 				LoadCodeP.LoadCodeStep =1;
 			}
-			else if(ButtonP.LoadCode_Timer == 3000 && LoadCodeP.LoadCodeStep==1)
+			else if(ButtonP.LoadCode_Timer == 5000 && LoadCodeP.LoadCodeStep==1)
 			{
 				LoadCodeP.LoadCodeResult = 2;  //烧录失败
 				ButtonP.LoadCode_Timer  = 0;

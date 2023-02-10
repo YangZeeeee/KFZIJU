@@ -33,7 +33,7 @@ void test(void)
 	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0;
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD,&GPIO_InitStruct);	
-	GPIO_WriteBit(GPIOD,GPIO_Pin_0,1);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_SET);
 }
 void  structInit_Test(void)
 {
@@ -66,7 +66,7 @@ void  structInit_Test(void)
 
 int main(void)
 {
-	unsigned  char level = 0;
+	unsigned char i=0;
 	memset(&DCRXdata,0,sizeof(DCRXdata));
 	delay_init();
 	RelayGPIO_Init();
@@ -79,29 +79,29 @@ int main(void)
 	ht_usart_Init();
 	Motor_EnP;
 	Timer_Init(1000);
-	idwg_Init(4,6250);  //10S一次喂狗
-	
+	//idwg_Init(4,6250);  //喂狗
+	//Test_Relay_L;
 	while(1)		
 	{
 		Rxdata_Cache();	
 		Rxdata_Extract();
 		Data_Analy();	
 		LoadCode_Process();
-		HintDisplay_Send();
+		HintDisplay_Send();	
+		htData_Analyze();
+		i =	htData_Use();		
 		Start_Testing();	
-//		htData_Analyze();
+	//	htData_Analyze();
 ////		Motor_Test();
-////		AMRxdata_Cache();  //抓取数据。
+///		AMRxdata_Cache();  //抓取数据。
 ////		AMRXDATA_Extract();
-		iwdg_feed();
+	//	iwdg_feed();
 		if(led_test_time>=7000)	
 		{
 			led_test_time = 0;
-			level = 1-level;
-			GPIO_WriteBit(GPIOD,GPIO_Pin_0,level);	
+		
 		//	DCData_Tx(HWDIS1,5);
-			htData_Tx(HWDIS1,5);
-			
+			//htData_Tx(HWDIS1,5);
 		}
 	}
 }

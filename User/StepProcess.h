@@ -23,6 +23,7 @@ extern struct Com_Para ComP;
 enum 
 {
 	Test_Init = 0,
+	Starting_Up,
 	HW_Learn,
 	ReadData_Send,
 	IndicLigh_Current,//指示灯电流
@@ -39,6 +40,7 @@ enum
 	Ganyin_Distance,//感应距离
 	Restart_Motor,   //一次检验完让电机重新归位
 	Sleep_Current, //休眠电流
+	Ganying_Data,
 };
 
 
@@ -55,6 +57,10 @@ struct ParaData
 	unsigned char OPA1_Test;
 	unsigned char OPA0_Test;
 	unsigned int GanDistance_Test;  //感应距离
+	unsigned char HW_Learn_Flag;  //红外自学习
+	unsigned char IndicLigh_Current_Flag;  //指示灯
+	unsigned char Power_Current_Flag;
+	unsigned char Ganying_Data_Flag;
 };
 
 

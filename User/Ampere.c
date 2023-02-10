@@ -124,7 +124,7 @@ void Ampere_usart485_init(void)
 	GPIO_InitStructure.GPIO_Pin   =  AMpere_RX;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	USART2_InitStruct.USART_BaudRate = 9600;
+	USART2_InitStruct.USART_BaudRate = 115200;
 	USART2_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART2_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART2_InitStruct.USART_Parity = USART_Parity_No;

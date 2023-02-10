@@ -8,9 +8,7 @@
 #include "Delay.h"
 #include "LoadCode.h"
 #include "idwg.h"
-
-
-
+#include "string.h"
 unsigned char  Start_ScreenId = 0;
 unsigned char  TestRead_ScreenID = 3;
 unsigned char  TextControl_id[] = {0x08,0x0c,0x14,0x18,0x1C,0x20,0x23,0x27,0x2a};
@@ -27,6 +25,7 @@ unsigned char  ProgressRate[] = {0xEE,0xB1,0x10,0x00,0x03,0x00,0x14,0x00,0x00,0x
 unsigned char HWDIS[] = {0xA5,0x01,0x01,0x01,0xA8};
 unsigned char HWREAD[] = {0xA5,0x02,0x01,0x02,0xAA};
 unsigned char DGREAD[] = {0xA5,0x02,0x01,0x01,0xA9};
+unsigned char METAL[] = {0XA5,0X01,0X01,0X02,0xA9};
 unsigned char StorageBuffer[66];
 struct Step  TestStep;
 struct ParaData TestPara;
@@ -225,28 +224,17 @@ void Com_Send(unsigned long *Data)
 			case 0:
 			{
 				htRxdata_P.WaitTimerFlag =1;
-				ComP.Com_time = 10;
-				ComP.Com_Num = 0;
+				ComP.Com_time = 0;
 				ComP.Com_Step = 1;
-				//上发数据到感应头
 			}break;
 			case 1:
 			{
 				if((ComP.Com_Num <= Send_Num)&&(ComP.Com_time == 0))
 				{
 					AMPara_Send();  //读取电流值。
-					//ComP.Com_Num ++;
-				//	ComP.Com_time = Send_Wait_Time;
 					ComP.Com_Step = 2; 
-					ComP.Com_time = 1000;
+					ComP.Com_time = 200;
 				}
-			//	else if(ComP.Com_Num >Send_Num)
-			///	{
-					
-		//			//提示读取失败。是否跳过。
-			//		ComP.Com_Flag = 0;
-		///		}
-				//等待10ms 抓取数据
 			}break;	
 			case 2:
 			{
@@ -254,15 +242,12 @@ void Com_Send(unsigned long *Data)
 				{
 					AMRxdata_Cache();  //抓取数据。
 					ComP.Com_Value = AMRXDATA_Extract();//获取电压值
-			//	if(ComP.Com_Value != 0)
-			//	{	
 					*Data = ComP.Com_Value;
 					ComP.Com_Step = 3;
 					ComP.Com_Flag = 0;  //感应头电流表一个流程读取结束
 				}
 			}break;
 				
-			//	}break;
 		}		
 	}
 
@@ -276,6 +261,13 @@ void Test_Step_Init(void)
 	htRxdata_P.WaitTimer = 0;
 	htRxdata_P.SendNum = 0;
 	TestStep.Motor_Step = 0;
+	
+	TestPara.HW_Learn_Flag = 0;
+	TestPara.IndicLigh_Current_Flag = 0;
+	TestPara.Ganying_Data_Flag = 0;
+	
+	htRxdata_P.SendNum = 0;
+	htRxdata_P.Rx_Error = 0;
 }
 
 
@@ -290,6 +282,7 @@ Start_Testing:
 ******************************************************/
 void Start_Testing(void)
 {
+	static unsigned char GanYing_Com = 0;
 	if(TestStep.Test_Start == 1)
 	{
 		TestStep.Test_Flag = 1; //表示开始进入检测
@@ -299,10 +292,10 @@ void Start_Testing(void)
 		{			
 			case Test_Init:                     //马达归位
 			{
-				iwdg_feed(); //10S 马达归为 如果没有归为则表示检测不到马达感应位
+				
 				unsigned int StepP_Num = 0;
-			
-				while(ButtonP.MOTOR_FLAG == 0 && TestStep.Motor_ReFlag == 0)
+				//iwdg_feed(); //10S 马达归为 如果没有归为则表示检测不到马达感应位
+				while((ButtonP.MOTOR_FLAG == 0 && TestStep.Motor_ReFlag == 0) ||(GPIO_ReadInputDataBit(GPIOE, MOTOR_DET) != 1))  
 				{
 					Motor_DirN;
 					for(StepP_Num=0;StepP_Num<790;StepP_Num++)
@@ -315,123 +308,178 @@ void Start_Testing(void)
 				}
 				ButtonP.MOTOR_FLAG = 0;
 				htRxdata_P.WaitTimerFlag  = 0;
+				htRxdata_P.WaitTimer = 0;
 				TestStep.Test_Press++;
 				TestStep.Motor_ReFlag = 0;
 				TestStep.Motor_ReTime = 0;
 			}break;
 			
-			case HW_Learn:
+			case Starting_Up:
 			{
-				Test_Relay_L;
-				if(htRxdata_P.WaitTimerFlag == 0)
+				if(htRxdata_P.WaitTimerFlag == 0)  //上电等2S 发送自动学习指令
 				{
-					htData_Tx(HWDIS,sizeof(HWDIS));
+					Test_Relay_L;
+					DataSwitch_Relay_H;			//数据脚连接	
 					htRxdata_P.WaitTimerFlag =1;
 				}
 				else if(htRxdata_P.WaitTimerFlag ==2)
 				{
 					TestStep.Test_Press++;
 					htRxdata_P.WaitTimerFlag = 0;
-					ComP.Com_Flag = 1;//下一个读取开始
+				}
+			}
+			
+			case HW_Learn:				 //  发送自动学习指令  等待5S 查看是否返回数据
+			{				
+				if(htRxdata_P.WaitTimerFlag  == 0)
+						htRxdata_P.WaitTimerFlag  = 1;
+				switch(GanYing_Com)
+				{
+					case 0:
+					{
+						htData_Tx(HWDIS,sizeof(HWDIS));
+						GanYing_Com++;
+					}break;
+					case 1:
+					{
+						if(TestPara.HW_Learn_Flag == 1)
+						{
+							TestStep.Test_Press = Ganying_Data;	
+							htRxdata_P.WaitTimerFlag = 0;
+							ComP.Com_Flag = 1;//下一个读取开始
+							ComP.Com_Step = 0;
+							GanYing_Com = 0;
+							TestPara.HW_Learn_Flag = 0;
+							htRxdata_P.htData_Deal = 0;
+							GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_RESET);
+						}
+						else if(htRxdata_P.WaitTimerFlag == 2)   //自学习失败 .。。。还未修改
+						{
+							TestStep.Test_Press = Ganying_Data;	
+							htRxdata_P.WaitTimerFlag = 0;
+							ComP.Com_Flag = 1;//下一个读取开始
+							ComP.Com_Step = 0;
+							GanYing_Com = 0;
+							TestPara.HW_Learn_Flag = 0;
+							htRxdata_P.htData_Deal = 0;
+						}
+					}break;
 				}
 			}break;	
-			
-			case ReadData_Send:
+		
+			case Ganying_Data:
 			{
 				if(htRxdata_P.WaitTimerFlag == 0)
 				{
 					htData_Tx(DGREAD,sizeof(DGREAD));
-					htRxdata_P.WaitTimerFlag =1;
-				}
-				else if(htRxdata_P.WaitTimerFlag ==2)
-				{
-					TestStep.Test_Press++;
-					htRxdata_P.WaitTimerFlag = 0;
-					ComP.Com_Flag = 1;//下一个读取开始
-					ComP.Com_Step = 0;
-				}
-			}break;
-			
-			case IndicLigh_Current://指示灯电流
-			{
-				Com_Send(&TestPara.Light_Current_Test);
-				if(ComP.Com_Flag ==0&& htRxdata_P.WaitTimerFlag ==2) //电流采集完成且50ms完成
-				{
-					ComP.Com_Flag = 1;//下一个读取开始
-					ComP.Com_Step = 0;
-					TestStep.Test_Press ++;					
-				}
-			}break;
-			
-			case Power_Current: //驱动电路使能
-			{
-				Com_Send(&TestPara.Power_Current_Test);
-				if(ComP.Com_Flag ==0&& htRxdata_P.WaitTimerFlag ==2)//电流采集完成且50ms完成
-				{
-					ComP.Com_Flag = 1;//下一个读取开始	
-					ComP.Com_Step = 0;
-					TestStep.Test_Press ++;						
-				}
-
-			}break;
-			
-			case Standby_Current://待机电流
-			{
-				Com_Send(&TestPara.Standby_Current_Test);
-				if(ComP.Com_Flag ==0&& htRxdata_P.WaitTimerFlag ==2)
-				{
-					TestStep.Test_Press ++;		
-					ComP.Com_Flag = 1;//下一个读取开开始
-					htRxdata_P.WaitTimerFlag =0;						
-				}
-			}break;
-			
-			case Trans_Power: //发射功率
-			{
-				if(htRxdata_P.WaitTimerFlag == 0)
-				{
 					htRxdata_P.WaitTimerFlag = 1;
-				}
-				htRxdata_P.Check_Value = htData_Analyze();
-				//校验数据错误 且等待时长到 则重新走一遍流程进行判断。一共重复三次(上报通信失败)
-				if(htRxdata_P.Check_Value == 0 && htRxdata_P.WaitTimerFlag == 2)
+				}		
+				if(TestPara.IndicLigh_Current_Flag == 1)  //指示灯电流读取
 				{
-					TestStep.Test_Press = ReadData_Send;
-					htRxdata_P.SendNum++;
-					if(htRxdata_P.SendNum == 3)
+					Com_Send(&TestPara.Light_Current_Test);  //200ms自动退出
+					if(ComP.Com_Flag ==0)
 					{
-					//	htData_Tx("11234",5);	
-							//上报通信错误,退出测试模式。
-						htRxdata_P.SendNum = 0;
+						ComP.Com_Flag = 1;//下一个读取开始
+						ComP.Com_Step = 0;
+						TestPara.IndicLigh_Current_Flag = 0;
+						htRxdata_P.htData_Deal = 0;
+						htRxdata_P.SendNum ++;
 					}
 				}
-				//校验数据成功
-			//	else if(htRxdata_P.Check_Value == 1)
-				//{
-					//htData_Tx("Check_Success",15);	
-					TestPara.Power_ADC_Test = htRxdata_P.Data[3];
-					TestPara.Shoot_Power_Test =  htRxdata_P.Data[4];
-					TestPara.Learn_Test =  htRxdata_P.Data[5];
-					TestPara.OPA0_Test =htRxdata_P.Data[6];
-					TestPara.OPA1_Test = htRxdata_P.Data[7];
-					TestStep.Test_Press ++;
-					htRxdata_P.Check_Value =0;
-			//	}
-				
+				else if(TestPara.Power_Current_Flag == 1)  //驱动电流读取
+				{
+					Com_Send(&TestPara.Power_Current_Test);  //200ms自动退出
+					if(ComP.Com_Flag ==0)
+					{
+						ComP.Com_Flag = 1;//下一个读取开始
+						ComP.Com_Step = 0;
+						htRxdata_P.htData_Deal = 0;
+						TestPara.Power_Current_Flag = 0;
+						htRxdata_P.SendNum ++;
+					}					
+				}
+					
+				else if(TestPara.Ganying_Data_Flag==1)   //感应数据读取
+				{
+					
+						TestPara.Ganying_Data_Flag = 0;
+						htRxdata_P.htData_Deal = 0;
+						ComP.Com_Flag = 1;//下一个读取开始
+						ComP.Com_Step = 0;
+					//	TestStep.Test_Press = Standby_Current;
+						htRxdata_P.WaitTimerFlag = 0;
+						htRxdata_P.WaitTimer = 0;
+						htRxdata_P.SendNum ++;
+						if(htRxdata_P.SendNum ==  3)
+						{
+							TestStep.Test_Press = Standby_Current;
+							htRxdata_P.SendNum = 0;
+						}
+						else
+						{
+							TestStep.Test_Press = Ganying_Data;
+							htRxdata_P.SendNum = 0;
+							htRxdata_P.Rx_Error ++;
+							if(htRxdata_P.Rx_Error == 3)
+							{
+								htRxdata_P.Rx_Error = 0;
+								TestStep.Test_Press = Standby_Current;
+							}
+						}
+				}
+		
+				else if(htRxdata_P.WaitTimerFlag == 2)  //下一个检测
+				{
+						//TestStep.Test_Press = Standby_Current;
+						htRxdata_P.WaitTimerFlag = 0;
+						htRxdata_P.WaitTimer = 0;
+						ComP.Com_Flag = 1;//下一个读取开始
+						ComP.Com_Step = 0;
+						htRxdata_P.SendNum ++;
+						if(htRxdata_P.SendNum ==  3)
+						{
+							TestStep.Test_Press = Standby_Current;
+							htRxdata_P.SendNum = 0;
+						}
+						else
+						{
+							TestStep.Test_Press = Ganying_Data;
+							htRxdata_P.SendNum = 0;
+							htRxdata_P.Rx_Error ++;
+							if(htRxdata_P.Rx_Error == 3)
+							{
+								htRxdata_P.Rx_Error = 0;
+								TestStep.Test_Press = Standby_Current;
+							}
+						}
+				}		
 			}break;
 			
+			case Standby_Current:
+			{
+				if(htRxdata_P.WaitTimerFlag == 0)
+						htRxdata_P.WaitTimerFlag = 1;
+				if(htRxdata_P.WaitTimerFlag == 2)
+						Com_Send(&TestPara.Standby_Current_Test);  //200ms自动退出
+				if(ComP.Com_Flag == 0)
+				{
+					TestStep.Test_Press = Display_Send;
+					htRxdata_P.WaitTimerFlag = 0;
+					htRxdata_P.WaitTimer = 0;
+				}
+			}break;
+		
 			case Display_Send:
 			{
 					//指示灯电流
 					if((Para_Data.Light_Current_Max <=TestPara.Light_Current_Test)||(Para_Data.Light_Current_Min>=TestPara.Light_Current_Test))
-					{
-					
+					{					
 						TextColor_Send(TextControl_id[0],Color_Red);
 						Data_Deal_Send(TestPara.Light_Current_Test,0X0001,TextControl_id[0]);
 					}		
 					else
 					{
-						TextColor_Send(TextControl_id[0],0xF980);
+						TextColor_Send(TextControl_id[0],0x07E0);
 						Data_Deal_Send(TestPara.Light_Current_Test,0X0001,TextControl_id[0]);		
 					}
 					//驱动电路使能数据发送 = 上电电流
@@ -442,7 +490,7 @@ void Start_Testing(void)
 					}	
 					else
 					{
-						TextColor_Send(TextControl_id[1],0xF980);
+						TextColor_Send(TextControl_id[1],0x07E0);
 						Data_Deal_Send(TestPara.Power_Current_Test,0X0001,TextControl_id[1]);		
 					}
 					//待机电流
@@ -453,129 +501,144 @@ void Start_Testing(void)
 					}
 					else
 					{
-						TextColor_Send(TextControl_id[2],0xF980);
+						TextColor_Send(TextControl_id[2],0x07E0);
 						Data_Deal_Send(TestPara.Standby_Current_Test,0X0001,TextControl_id[2]);		
 					}	
 					// 电压ADC
-					if((Para_Data.Power_ADC_Max <= TestPara.Power_ADC_Test)||(Para_Data.Power_ADC_Min>=TestPara.Power_ADC_Test))
+					if((Para_Data.Power_ADC_Max < TestPara.Power_ADC_Test)||(Para_Data.Power_ADC_Min>TestPara.Power_ADC_Test))
 					{
 						TextColor_Send(TextControl_id[3],Color_Red);
 						Data_Deal_Send(TestPara.Power_ADC_Test,0X0001,TextControl_id[3]);
 					}
 					else
 					{
-						TextColor_Send(TextControl_id[3],0xF980);
+						TextColor_Send(TextControl_id[3],0x07E0);
 						Data_Deal_Send(TestPara.Power_ADC_Test,0X0001,TextControl_id[3]);		
 					}	
-					//红外发射功率
+					//红外学习结果
 					if((Para_Data.HW_Learn_Max <= TestPara.Learn_Test)||(Para_Data.HW_Learn_Min>=TestPara.Learn_Test))
 					{
-						TextColor_Send(TextControl_id[4],Color_Red);
-						Data_Deal_Send(TestPara.Learn_Test,0X0001,TextControl_id[4]);
-					}
-					else
-					{
-						TextColor_Send(TextControl_id[4],0xF980);
-						Data_Deal_Send(TestPara.Learn_Test,0X0001,TextControl_id[4]);		
-					}	
-					//红外学习结果
-					if((Para_Data.Shoot_Power_Max <= TestPara.Shoot_Power_Test)||(Para_Data.Light_Current_Min>=TestPara.Shoot_Power_Test))
-					{
 						TextColor_Send(TextControl_id[5],Color_Red);
-						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[5]);
+						Data_Deal_Send(TestPara.Learn_Test,0X0001,TextControl_id[5]);
 					}
 					else
 					{
-						TextColor_Send(TextControl_id[5],0xF980);
-						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[5]);		
+						TextColor_Send(TextControl_id[5],0x07E0);
+						Data_Deal_Send(TestPara.Learn_Test,0X0001,TextControl_id[5]);		
+					}	
+					//红外发射功率
+					if((Para_Data.Shoot_Power_Max <TestPara.Shoot_Power_Test)||(Para_Data.Shoot_Power_Min>TestPara.Shoot_Power_Test))
+					{
+						TextColor_Send(TextControl_id[4],Color_Red);
+						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[4]);
+					}
+					else
+					{
+						TextColor_Send(TextControl_id[4],0x07E0);
+						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[4]);		
 					}
 					//运放校准0
-					if((Para_Data.OPA0_Value_Max <=TestPara.OPA0_Test)||(Para_Data.OPA0_Value_Min>=TestPara.OPA0_Test))
+					if((Para_Data.OPA0_Value_Max <TestPara.OPA0_Test)||(Para_Data.OPA0_Value_Min>TestPara.OPA0_Test))
 					{
 						TextColor_Send(TextControl_id[6],Color_Red);
-						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[6]);	
+						Data_Deal_Send(TestPara.OPA0_Test,0X0001,TextControl_id[6]);	
 					}
 					else
 					{
-						TextColor_Send(TextControl_id[6],0xF980);
-						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[6]);	
+						TextColor_Send(TextControl_id[6],0x07E0);
+						Data_Deal_Send(TestPara.OPA0_Test,0X0001,TextControl_id[6]);	
 					}
 					//运放校准1
-					if((Para_Data.OPA1_Value_Max <= TestPara.OPA1_Test)||(Para_Data.OPA1_Value_Min)>=TestPara.OPA1_Test)
+					if((Para_Data.OPA1_Value_Max < TestPara.OPA1_Test)||(Para_Data.OPA1_Value_Min)>TestPara.OPA1_Test)
 					{
 						TextColor_Send(TextControl_id[7],Color_Red);
-						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[7]);
+						Data_Deal_Send(TestPara.OPA1_Test,0X0001,TextControl_id[7]);
 					}
 					else
 					{
-						TextColor_Send(TextControl_id[7],0xF980);
-						Data_Deal_Send(TestPara.Shoot_Power_Test,0X0001,TextControl_id[7]);	
-					}
-					TestStep.Test_Press ++;				
+						TextColor_Send(TextControl_id[7],0x07E0);
+						Data_Deal_Send(TestPara.OPA1_Test,0X0001,TextControl_id[7]);	
+					}	
+					TestStep.Motor_ReFlag = 0;
+					TestStep.Motor_ReTime = 0;
+					TestPara.Power_ADC_Test = 0;
+					TestPara.Shoot_Power_Test =  0;
+					TestPara.Learn_Test =  0;
+					TestPara.OPA0_Test =0;
+					TestPara.OPA1_Test = 0;
+					TestStep.Test_Press = Ganyin_Distance;			
 			}break;
+			
 			case Ganyin_Distance:  //感应距离
 			{	
-				unsigned  int StepN_Num=0;
-				switch(TestStep.Motor_Step)
+				unsigned int StepN_Num=0;
+				unsigned char GATE_Flag=0;
+				if(htRxdata_P.WaitTimerFlag == 0)
 				{
-					case 0:
-					{
-						Motor_DirP;
-						for(StepN_Num=0;StepN_Num<11060;StepN_Num++) // 790可更改为具体的参数值(从顶部到距离为6)
-						{
-							Motor_PulP;
-							delay_us(50);
-							Motor_PulN;
-							delay_us(50);
-						}				
-////						delay_us(150);							
-						if(GPIO_ReadInputDataBit(GPIOE, GATE2_DET) == 0) //检测到 则开始检测上线值
-						{
-							TestStep.Motor_Step = 1;
-							
-						}
-						else					//跳出检测提示为低
-						{
-							TestStep.Test_Press =Restart_Motor;
-							//TestStep.Test_Start = 0; //停止检测
-							//TestStep.Test_Flag =  0; //检测完成。
-							TextColor_Send(TextControl_id[8],Color_Red);
-							Data_Deal_Send(0,0X0001,TextControl_id[8]);
-						}
-					}break;
-					case 1:
-					{
-						Motor_DirN;
-						for(StepN_Num=0;StepN_Num<3160;StepN_Num++) // 790可更改为具体的参数值(从距离为6->距离为8)
-						{
-							Motor_PulP;
-							delay_us(50);
-							Motor_PulN;
-							delay_us(50);
-						}	
-////						delay_us(10);	
-						if(GPIO_ReadInputDataBit(GPIOE, GATE1_DET) == 0) //检测到提示距离过长
-						{
-							TextColor_Send(TextControl_id[8],Color_Red);
-							Data_Deal_Send(2,0X0001,TextControl_id[8]);
-						}
-						else							//跳出检测  
-						{
-							TextColor_Send(TextControl_id[8],0xF980);
-							Data_Deal_Send(1,0X0001,TextControl_id[8]);	
-						}
-					//	TestStep.Test_Flag =  0; //检测完成。
-					//TestStep.Test_Start = 0; //停止检测
-						TestStep.Test_Press = Restart_Motor; //流程为0	
-					}break;
+						htRxdata_P.WaitTimerFlag = 1;
+					htData_Tx(METAL,sizeof(METAL));					
 				}
+				if(htRxdata_P.WaitTimerFlag == 2)
+				{
+					switch(TestStep.Motor_Step)
+					{
+						case 0:
+						{
+							Motor_DirP;
+							for(StepN_Num=0;StepN_Num<10270;StepN_Num++) // 790可更改为具体的参数值(从顶部到距离为6)
+							{
+								Motor_PulP;
+								delay_us(50);
+								Motor_PulN;
+								delay_us(50);
+								if(GPIO_ReadInputDataBit(GPIOE, GATE2_DET) == 0) //检测到 则开始检测上线值
+								{
+										GATE_Flag = 1;
+										TestStep.Motor_Step = 1;	
+								}
+							}
+							if(GATE_Flag== 0)					//跳出检测提示为低
+							{
+								TestStep.Test_Press =Restart_Motor;
+								TextColor_Send(TextControl_id[8],Color_Red);
+								Data_Deal_Send(0,0X0001,TextControl_id[8]);
+							}
+						}break;
+						case 1:
+						{
+							Motor_DirN;
+							for(StepN_Num=0;StepN_Num<1580;StepN_Num++) // 790可更改为具体的参数值(从距离为6->距离为8)
+							{
+								Motor_PulP;
+								delay_us(50);
+								Motor_PulN;
+								delay_us(50);
+									if(GPIO_ReadInputDataBit(GPIOE, GATE1_DET) == 0) //检测到 则开始检测上线值
+									{
+										GATE_Flag = 2;
+									}
+							}	
+							if(GATE_Flag == 2) // 正常范围
+							{
+								TextColor_Send(TextControl_id[8],0x07E0 );
+								Data_Deal_Send(1,0X0001,TextControl_id[8]);
+							}
+							else							//检测到提示距离过长
+							{
+								TextColor_Send(TextControl_id[8],0xFFE0); 
+								Data_Deal_Send(2,0X0001,TextControl_id[8]);	
+							}
+							TestStep.Test_Press = Restart_Motor; //流程为0	
+						}break;
+					}
+			}
 			}break;	
 			
 			case Restart_Motor:
 			{
 				unsigned int Step_Num = 0;
-				
-				while((ButtonP.MOTOR_FLAG == 0) &&(TestStep.Motor_ReFlag == 0))
+				//(ButtonP.MOTOR_FLAG == 0) &&(TestStep.Motor_ReFlag == 0)
+				while(GPIO_ReadInputDataBit(GPIOE, MOTOR_DET) != 1)
 				{
 					Motor_DirN;
 					for(Step_Num=0;Step_Num<790;Step_Num++)
@@ -584,23 +647,16 @@ void Start_Testing(void)
 						delay_us(50);
 						Motor_PulN;
 						delay_us(50);
+						if(GPIO_ReadInputDataBit(GPIOE, MOTOR_DET) == 1)
+							break;
 					}	
 				}
-				TestStep.Motor_ReFlag = 0;
-				TestStep.Motor_ReTime = 0;
-////				TestPara.Power_ADC_Test = 0;
-////				TestPara.Shoot_Power_Test =  0;
-////				TestPara.Learn_Test =  0;
-////				TestPara.OPA0_Test =0;
-////				TestPara.OPA1_Test = 0;
 				Test_Relay_H;
-				
-				ButtonP.MOTOR_FLAG = 0;
-				
+				ButtonP.MOTOR_FLAG = 0;		
 				TestStep.Test_Flag =  0; //检测完成。
 				TestStep.Test_Start = 0; //停止检测
-				TestStep.Test_Press = 0; //流程为0	
-			}break;
+				TestStep.Test_Press = 0; //流程为0				
+			}break;						
 		}
 	}
 	if(LoadCodeP.HintDisPlayFLag == 2)
@@ -667,7 +723,7 @@ void Stored_Data(void)
 
 void Data3_Send(void)
 {
-		Data_Deal_Send(Para_Data.Light_Current_Max,0X0003,ReadTextControl_id[0]);  //指示灯电流
+	Data_Deal_Send(Para_Data.Light_Current_Max,0X0003,ReadTextControl_id[0]);  //指示灯电流
 	Data_Deal_Send(Para_Data.Light_Current_Min,0X0003,ReadTextControl_id[1]);  
 	Data_Deal_Send(Para_Data.Power_Current_Max,0X0003,ReadTextControl_id[2]);  //检测阀驱动电流
 	Data_Deal_Send(Para_Data.Power_Current_Min,0X0003,ReadTextControl_id[3]);
@@ -677,10 +733,10 @@ void Data3_Send(void)
 	Data_Deal_Send(Para_Data.Standby_Current_Min,0X0003,ReadTextControl_id[5]);
 	Data_Deal_Send(Para_Data.Power_ADC_Max,0X0003,ReadTextControl_id[6]);				//电源ADC
 	Data_Deal_Send(Para_Data.Power_ADC_Min,0X0003,ReadTextControl_id[7]);
-	Data_Deal_Send(Para_Data.Shoot_Power_Max,0X0003,ReadTextControl_id[8]);			//红外发射功率
-	Data_Deal_Send(Para_Data.Shoot_Power_Min,0X0003,ReadTextControl_id[9]);
-	Data_Deal_Send(Para_Data.HW_Learn_Max,0X0003,ReadTextControl_id[10]);				//红外学习结果
-	Data_Deal_Send(Para_Data.HW_Learn_Min,0X0003,ReadTextControl_id[11]);
+	Data_Deal_Send(Para_Data.HW_Learn_Max,0X0003,ReadTextControl_id[8]);			//红外发射功率
+	Data_Deal_Send(Para_Data.HW_Learn_Min,0X0003,ReadTextControl_id[9]);
+	Data_Deal_Send(Para_Data.Shoot_Power_Max ,0X0003,ReadTextControl_id[10]);				//红外学习结果
+	Data_Deal_Send(Para_Data.Shoot_Power_Min ,0X0003,ReadTextControl_id[11]);
 
 	Data_Deal_Send(Para_Data.OPA0_Value_Max,0X0003,ReadTextControl_id[12]);
 	Data_Deal_Send(Para_Data.OPA0_Value_Min,0X0003,ReadTextControl_id[13]);
@@ -818,17 +874,17 @@ void Data_Analy(void)
 										}break;
 										case 0x1B: //红外学习结果
 										{
-											Para_Data.HW_Learn_Min=RecData_Deal(DC_Analay.Data,TestDatalen);
+											Para_Data.HW_Learn_Min =RecData_Deal(DC_Analay.Data,TestDatalen);
 											ProgressData_Send(65);
 										}break;
 										case 0x1E: //红外发射功率
 										{
-											Para_Data.Shoot_Power_Max=RecData_Deal(DC_Analay.Data,TestDatalen);
+											Para_Data.Shoot_Power_Max =RecData_Deal(DC_Analay.Data,TestDatalen);
 											ProgressData_Send(70);	
 										}break;
 										case 0x1F:
 										{
-											Para_Data.Shoot_Power_Min=RecData_Deal(DC_Analay.Data,TestDatalen);
+											Para_Data.Shoot_Power_Min =RecData_Deal(DC_Analay.Data,TestDatalen);
 											ProgressData_Send(74);
 										}break;
 										case 0x03: //运放校准值0
@@ -918,14 +974,14 @@ void Read_Storage_Data(unsigned char *buff,unsigned int length)
 	Para_Data.Power_ADC_Max	= buff[20]<<8|buff[21];
 	Para_Data.Power_ADC_Min = buff[22]<<8|buff[23];
 	Para_Data.Power_ADC_ERRORNum = buff[24]<<8|buff[25];
+	//红外发射功率	
+	Para_Data.Shoot_Power_Max = buff[26]<<8|buff[27];
+	Para_Data.Shoot_Power_Min = buff[28]<<8|buff[29];
+	Para_Data.Shoot_Power_ERRORNum  = buff[30]<<8|buff[31];
 	//红外学习结果
-	Para_Data.HW_Learn_Max	= buff[26]<<8|buff[27];
-	Para_Data.HW_Learn_Min = buff[28]<<8|buff[29];
-	Para_Data.HW_Learn_ERRORNum = buff[30]<<8|buff[31];
-	//红外发射功率
-	Para_Data.Shoot_Power_Max	= buff[32]<<8|buff[33];
-	Para_Data.Shoot_Power_Min = buff[34]<<8|buff[35];
-	Para_Data.Shoot_Power_ERRORNum = buff[36]<<8|buff[37];
+	Para_Data.HW_Learn_Max = buff[32]<<8|buff[33];
+	Para_Data.HW_Learn_Min = buff[34]<<8|buff[35];
+	Para_Data.HW_Learn_ERRORNum = buff[36]<<8|buff[37];
 	//运放校准0
 	Para_Data.OPA0_Value_Max	= buff[38]<<8|buff[39];
 	Para_Data.OPA0_Value_Min = buff[40]<<8|buff[41];
@@ -976,20 +1032,21 @@ void Storage_Data(void)
 	StorageBuffer[27] = Para_Data.Power_ADC_Min&0x00ff;
 	StorageBuffer[28] = Para_Data.Power_ADC_ERRORNum >> 8;
 	StorageBuffer[29] = Para_Data.Power_ADC_ERRORNum&0x00ff;
+
+		//红外发射功率
+	StorageBuffer[30] = Para_Data.Shoot_Power_Max >> 8;
+	StorageBuffer[31] = Para_Data.Shoot_Power_Max &0x00ff;
+	StorageBuffer[32] = Para_Data.Shoot_Power_Min >> 8;
+	StorageBuffer[33] = Para_Data.Shoot_Power_Min &0x00ff;
+	StorageBuffer[34] = Para_Data.Shoot_Power_ERRORNum  >> 8;
+	StorageBuffer[35] = Para_Data.Shoot_Power_ERRORNum &0x00ff;
 	//红外学习结果
-	StorageBuffer[30] = Para_Data.HW_Learn_Max >> 8;
-	StorageBuffer[31] = Para_Data.HW_Learn_Max&0x00ff;
-	StorageBuffer[32] = Para_Data.HW_Learn_Min >> 8;
-	StorageBuffer[33] = Para_Data.HW_Learn_Min&0x00ff;
-	StorageBuffer[34] = Para_Data.HW_Learn_ERRORNum >> 8;
-	StorageBuffer[35] = Para_Data.HW_Learn_ERRORNum&0x00ff;
-	//红外发射功率
-	StorageBuffer[36] = Para_Data.Shoot_Power_Max >> 8;
-	StorageBuffer[37] = Para_Data.Shoot_Power_Max&0x00ff;
-	StorageBuffer[38] = Para_Data.Shoot_Power_Min >> 8;
-	StorageBuffer[39] = Para_Data.Shoot_Power_Min&0x00ff;
-	StorageBuffer[40] = Para_Data.Shoot_Power_ERRORNum >> 8;
-	StorageBuffer[41] = Para_Data.Shoot_Power_ERRORNum&0x00ff;
+	StorageBuffer[36] = Para_Data.HW_Learn_Max >> 8;
+	StorageBuffer[37] = Para_Data.HW_Learn_Max&0x00ff;
+	StorageBuffer[38] = Para_Data.HW_Learn_Min >> 8;
+	StorageBuffer[39] = Para_Data.HW_Learn_Min&0x00ff;
+	StorageBuffer[40] = Para_Data.HW_Learn_ERRORNum>> 8;
+	StorageBuffer[41] = Para_Data.HW_Learn_ERRORNum&0x00ff;
 	//运放校准0
 	StorageBuffer[42] = Para_Data.OPA0_Value_Max >> 8;
 	StorageBuffer[43] = Para_Data.OPA0_Value_Max&0x00ff;

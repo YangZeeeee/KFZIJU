@@ -19,3 +19,4 @@
 .\objects\stepprocess.o: ..\User\Delay\Delay.h
 .\objects\stepprocess.o: ..\User\LoadCode\LoadCode.h
 .\objects\stepprocess.o: ..\User\idwg.h
+.\objects\stepprocess.o: D:\KeilMDK\ARM\ARMCC\Bin\..\include\string.h
